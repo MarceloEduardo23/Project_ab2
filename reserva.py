@@ -1,15 +1,20 @@
-from veiculos import Veiculo
+# C:\Users\ResTIC16\Desktop\PJ\ProjectPS-OO\reserva.py
+
 import os
 from datetime import datetime, timedelta
 
+# NENHUMA IMPORTAÇÃO DO 'main' AQUI EM CIMA
+
 class Reserva:
-    
+    VALOR_CAUCAO = 250.00
+
     def __init__(self):
         self._cpf = ''
         self._placa = ''
         self._modelo = ''
         self._dias = 0
         self._total = 0.0
+        self._deposito = 0.0
         self._incidentes = []
         self._pago = False
         self._finalizada = False
@@ -17,89 +22,103 @@ class Reserva:
         self._comentario = None
 
     @property
-    def pago(self):
-        return self._pago
-
-    @pago.setter
-    def pago(self, valor):
-        if isinstance(valor, bool):
-            self._pago = valor
-        else:
-            print("Valor inválido para pago. Use True ou False.")
-            
+    def cpf(self): return self._cpf
     @property
-    def finalizada(self):
-        return self._finalizada
-
-    @finalizada.setter
-    def finalizada(self, valor):
-        if isinstance(valor, bool):
-            self._finalizada = valor
-        else:
-            print("Valor inválido para finalizada. Use True ou False.")
-
+    def placa(self): return self._placa
     @property
-    def incidentes(self):
-        return self._incidentes
+    def modelo(self): return self._modelo
+    @property
+    def dias(self): return self._dias
+    @property
+    def total(self): return self._total
+    @property
+    def pago(self): return self._pago
+    @property
+    def finalizada(self): return self._finalizada
+    @property
+    def incidentes(self): return self._incidentes
 
+    @dias.setter
+    def dias(self, valor): self._dias = valor
+    @total.setter
+    def total(self, valor): self._total = valor
 
     def fazer_reserva(self, cliente, veiculo, dias):
         if not cliente or not veiculo or dias <= 0:
             print("Dados inválidos para reserva.")
             return
 
-        self.cpf = cliente.cpf
-        self.placa = veiculo.placa
-        self.modelo = veiculo.modelo
-        self.dias = dias
-        self.total = veiculo.valor * dias
+        self._cpf = cliente.cpf
+        self._placa = veiculo.placa
+        self._modelo = veiculo.modelo
+        self._dias = dias
+        
+        total_bruto = veiculo.valor * dias
+        desconto_longa_duracao = 0.0
+        if dias >= 7:
+            desconto_longa_duracao = total_bruto * 0.10
+            print(f"INFO: Desconto de longa duração (10%) aplicado: -R$ {desconto_longa_duracao:.2f}")
+
+        self.total = total_bruto - desconto_longa_duracao
+        self._deposito = self.VALOR_CAUCAO
         veiculo.disponivel = False
-        print(f"Reserva realizada com sucesso para {cliente.nome}. Total: R${self.total:.2f}")
+        
+        print(f"\nReserva realizada com sucesso para {cliente.nome}.")
+        print(f"Valor das diárias (com desconto, se aplicável): R${self.total:.2f}")
+        print(f"Caução a ser pago: R${self._deposito:.2f}")
 
     def efetuar_pagamento(self):
+        # <<< MUDANÇA CRUCIAL AQUI
+        # A importação é feita aqui dentro, apenas quando a função é chamada.
+        from main import PROMO_CODES
+        
         if self.pago:
             print("Pagamento já realizado.")
             return
 
-        print(f"Total da reserva: R$ {self.total:.2f}")
+        total_diarias = self.total
+        
+        cupom = input("Você possui um cupom de desconto? (Deixe em branco se não tiver): ").upper()
+        if cupom and cupom in PROMO_CODES:
+            tipo, valor = PROMO_CODES[cupom]
+            desconto_cupom = 0
+            if tipo == 'perc':
+                desconto_cupom = self.total * valor
+                print(f"Cupom '{cupom}' aplicado! Desconto de {valor*100:.0f}%: -R$ {desconto_cupom:.2f}")
+            elif tipo == 'fixo':
+                desconto_cupom = valor
+                print(f"Cupom '{cupom}' aplicado! Desconto de R$ {desconto_cupom:.2f}")
+            
+            total_diarias -= desconto_cupom
+            if total_diarias < 0: total_diarias = 0
+        elif cupom:
+            print("Cupom inválido ou expirado.")
+
+        total_a_pagar = total_diarias + self._deposito
+        print(f"\nTotal das diárias (com descontos): R$ {total_diarias:.2f}")
+        print(f"Valor do caução: R$ {self._deposito:.2f}")
+        print(f"TOTAL A PAGAR: R$ {total_a_pagar:.2f}")
+
         while True:
             opcao = input("Pagamento à vista (1) ou parcelado (2)? ").strip()
             if opcao == '1':
-                desc = self.total * 0.9
-                print(f"Desconto de 10% aplicado. Total a pagar: R${desc:.2f}")
+                valor_com_desconto = total_diarias * 0.9 + self._deposito
+                print(f"Desconto de 10% nas diárias aplicado. Total a pagar: R${valor_com_desconto:.2f}")
                 confirmar = input("Confirmar pagamento? (s/n) ").lower()
                 if confirmar == 's':
-                    self.pago = True
+                    self._pago = True
                     print("Pagamento efetuado com sucesso!")
                 break
             elif opcao == '2':
-                print("Parcelamos em até 12x. Até 3x sem juros!\n")
-                while True:
-                    try:
-                        parcelas = int(input("Número de parcelas (1 a 12): "))
-                        if 1 <= parcelas <= 12:
-                            break
-                        else:
-                            print("Escolha um valor entre 1 e 12.")
-                    except ValueError:
-                        print("Digite um número válido.")
-                for i in range(1, parcelas+1):
-                    if parcelas <= 3:
-                        valor_parcela = self.total / parcelas
-                    else:
-                        valor_parcela = (self.total / parcelas) * (1 + 0.05) ** i
-                    print(f"Parcela {i}: R${valor_parcela:.2f}")
-                confirmar = input("Confirmar pagamento? (s/n) ").lower()
-                if confirmar == 's':
-                    self.pago = True
-                    print("Pagamento efetuado com sucesso!")
+                # Implementação de parcelamento
+                print("Parcelamento indisponível no momento.")
                 break
             else:
                 print("Opção inválida.")
-
-    def devolver_veiculo(self, lista_veiculos, lista_reservas):
+    
+    def devolver_veiculo(self, lista_veiculos):
         if not self.pago:
-            print("Não é possível devolver o veículo antes de efetuar o pagamento total da reserva.\n")
+            print("Não é possível devolver o veículo antes de efetuar o pagamento.\n")
             return
 
         veiculo = next((v for v in lista_veiculos if v.placa == self.placa), None)
@@ -107,188 +126,149 @@ class Reserva:
             print("Veículo não encontrado!\n")
             return
 
-        veiculo.disponivel = True
-        print(f"\nVeículo {veiculo.modelo} ({veiculo.placa}) devolvido com sucesso!\n")
-
-        # Registro de manutenção
-        while True:
-            opcao = input("Deseja registrar alguma manutenção para este veículo? (s/n): ").strip().lower()
-            if opcao == 's':
-                veiculo.registrar_manutencao()
-                break
-            elif opcao == 'n':
-                break
-            else:
-                print("Digite uma opção válida (s/n).")
-
-        # Avaliação do aluguel
-        while True:
-            avaliar = input("Deseja avaliar o aluguel? (s/n): ").strip().lower()
-            if avaliar == 's':
-                self.avaliar_aluguel()
-                break
-            elif avaliar == 'n':
-                break
-            else:
-                print("Digite uma opção válida (s/n).")
-
-
-        # Marcar como finalizada (não remover da lista)
-        self.finalizada = True
-
-        # Limpar tela e exibir resumo completo
-        os.system('cls')
-        print("===== Resumo da Reserva =====")
-        print(f"Cliente (CPF): {self.cpf}")
-        print(f"Veículo: {self.modelo}")
-        print(f"Dias alugados: {self.dias}")
-        print(f"Valor total pago: R$ {self.total:.2f}")
-
-        if veiculo.manutencao:
-            print("\nManutenções realizadas neste veículo durante a reserva:")
-            for i, m in enumerate(veiculo.manutencao, 1):
-                print(f"{i}. Data: {m['data']} | Descrição: {m['descricao']} | Custo: R${m['custo']}")
-
-        # Somente exibe avaliação se existir
-        if hasattr(self, 'avaliacao'):
-            print(f"\nAvaliação do aluguel: Nota {self.avaliacao}")
-            if hasattr(self, 'comentario') and self.comentario:
-                print(f"Comentário: {self.comentario}")
-
-        print("\nSeu histórico de reservas:")
-        historico = [r for r in lista_reservas if hasattr(r, 'cpf') and r.cpf == self.cpf]
-        if not historico:
-            print("Nenhuma reserva encontrada para este CPF.\n")
+        status_reembolso = ""
+        incidente_devolucao = input("Houve algum novo dano ou incidente com o veículo? (s/n) ").lower()
+        if incidente_devolucao == 's':
+            print(f"O valor do caução será retido para cobrir os danos.")
+            self.registrar_incidente_devolucao()
+            status_reembolso = f"Status do Caução: Retido (R${self._deposito:.2f}) para cobrir novos danos."
         else:
-            for idx, r in enumerate(historico, 1):
-                status = "Finalizada" if getattr(r, 'finalizada', False) else "Em andamento"
-                print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa} | Dias: {r.dias} | Total: R${r.total:.2f} | Status: {status}")
+            status_reembolso = f"Status do Caução: Reembolsado integralmente (R${self._deposito:.2f})."
 
+        veiculo.disponivel = True
+        self._finalizada = True
+        
+        avaliar = input("Deseja avaliar o aluguel? (s/n): ").strip().lower()
+        if avaliar == 's':
+            self.avaliar_aluguel()
+
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("\n" + "="*50)
+        print("              RESUMO DA DEVOLUÇÃO")
+        print("="*50)
+        print(f"Veículo {veiculo.modelo} ({veiculo.placa}) devolvido com sucesso!")
+        print(status_reembolso)
+        print("="*50 + "\n")
 
     def avaliar_aluguel(self):
-        if not self.pago:
-            print("Você só pode avaliar o aluguel após efetuar o pagamento da reserva.\n")
-            return
-
         while True:
             try:
                 nota = int(input("Dê uma nota de 1 a 5 para o aluguel: "))
-                if 1 <= nota <= 5:
-                    break
-                else:
-                    print("Digite uma nota entre 1 e 5.")
-            except ValueError:
-                print("Por favor, digite um número válido.")
-
-        comentario = input("Deseja deixar um comentário? (opcional): ").strip()
-        self.avaliacao = nota
-        self.comentario = comentario
+                if 1 <= nota <= 5: break
+                else: print("Digite uma nota entre 1 e 5.")
+            except ValueError: print("Por favor, digite um número válido.")
+        
+        self._comentario = input("Deseja deixar um comentário? (opcional): ").strip()
+        self._avaliacao = nota
         print("Avaliação registrada com sucesso!\n")
 
     def exibir_contrato(self, cliente):
-        data_inicio = datetime.now()
-        data_fim = data_inicio + timedelta(days=self.dias)
+        # Simula data de retirada como sendo "dias" atrás a partir de agora
+        data_retirada = datetime.now() - timedelta(days=self.dias)
+        data_devolucao_prevista = data_retirada + timedelta(days=self.dias)
         print("\n========== CONTRATO DE LOCAÇÃO ==========")
         print(f"Cliente: {cliente.nome} | CPF: {cliente.cpf}")
-        print(f"Veículo: {self.modelo} | Placa: {self.placa} | Valor diário: R${self.total/self.dias:.2f}")
-        print(f"Período: {self.dias} dias | Total: R${self.total:.2f}")
-        print(f"Pagamento: {'Pago' if self.pago else 'A definir'}")
-        print(f"Data de devolução prevista: {data_fim.strftime('%d/%m/%Y')}")
-        print("========================================\n")
+        print(f"Veículo: {self.modelo} | Placa: {self.placa}")
+        print(f"Período: {self.dias} dias | Valor Diárias: R${self.total:.2f}")
+        print(f"Valor Caução: R${self._deposito:.2f}")
+        print(f"Pagamento: {'Pago' if self.pago else 'Pendente'}")
+        print(f"Data de Retirada: {data_retirada.strftime('%d/%m/%Y')}")
+        print(f"Data de Devolução Prevista: {data_devolucao_prevista.strftime('%d/%m/%Y')}")
+        print("="*50 + "\n")
 
     def adicionar_incidente(self, data, descricao):
         self._incidentes.append({'data': data, 'descricao': descricao})
         print("Incidente registrado com sucesso!")
 
+    def registrar_incidente_devolucao(self):
+        data = datetime.now().strftime("%d/%m/%Y")
+        descricao = input("Descreva o dano/incidente ocorrido: ")
+        self.adicionar_incidente(data, descricao)
+
 class Gerenciar_Reserva:
     def __init__(self):
-        self._reservas = []  # atributo privado
+        self.reservas = []
 
-    @property
-    def reservas(self):
-        return self._reservas
-    
     def fazer_reserva(self, cliente, veiculo, dias):
-        if not cliente or not veiculo or dias <= 0:
-            print("Dados inválidos para reserva.")
-            return
         nova_reserva = Reserva()
         nova_reserva.fazer_reserva(cliente, veiculo, dias)
-        self._reservas.append(nova_reserva)
+        self.reservas.append(nova_reserva)
 
-    def buscar_reserva_por_cpf(self, cpf):
-        return [r for r in self._reservas if r.cpf == cpf]
-
-    def historico_cliente(self, cpf, cliente=None):
-        historico = [r for r in self._reservas if r.cpf == cpf]
-        if not historico:
-            print("Nenhuma reserva encontrada para este CPF.\n")
+    def cancelar_reserva(self, reserva, lista_veiculos):
+        if reserva.pago:
+            print("\nNão é possível cancelar uma reserva que já foi paga.")
             return
-        print("\n=== HISTÓRICO DE RESERVAS ===")
-        for idx, r in enumerate(historico, 1):
-            status = "Finalizada" if r.finalizada or r.pago else "Em andamento"
-            print(f"\nReserva {idx} - Status: {status}")
-            print(f"Veículo: {r.modelo} | Placa: {r.placa} | Dias: {r.dias} | Total: R${r.total:.2f}")
-            if cliente:
-                print(f"Cliente: {cliente.nome} | CPF: {cliente.cpf}")
-            if r.avaliacao:
-                print(f"Avaliação: {r.avaliacao}")
-                if r.comentario:
-                    print(f"Comentário: {r.comentario}")
-            if r.incidentes:
-                print("Incidentes:")
-                for inc in r.incidentes:
-                    print(f"- Data: {inc['data']} | Descrição: {inc['descricao']}")
-            print("=" * 50)
 
-    def efetuar_pagamento(self, cpf, placa):
-        r = next((res for res in self._reservas if res.cpf == cpf and res.placa == placa), None)
-        if r:
-            r.efetuar_pagamento()
-        else:
-            print("Reserva não encontrada.")
+        veiculo = next((v for v in lista_veiculos if v.placa == reserva.placa), None)
+        if veiculo:
+            veiculo.disponivel = True
 
-    def devolver_reserva(self, cpf, placa, veiculos):
-        r = next((res for res in self._reservas if res.cpf == cpf and res.placa == placa), None)
-        if r:
-            veiculo = next((v for v in veiculos if v.placa == placa), None)
-            if veiculo:
-                r.devolver_veiculo(veiculo)
-            else:
-                print("Veículo não encontrado.")
-        else:
-            print("Reserva não encontrada.")
+        self.reservas.remove(reserva)
+        print("\nReserva cancelada com sucesso!")
 
-    def registrar_avaliacao(self, cpf, placa):
-        r = next((res for res in self._reservas if res.cpf == cpf and res.placa == placa), None)
-        if r:
-            r.avaliar_aluguel()
-        else:
-            print("Reserva não encontrada.")
+    def modificar_reserva(self, reserva, lista_veiculos):
+        if reserva.pago:
+            print("\nNão é possível modificar uma reserva que já foi paga.")
+            return
 
-    def controle_pagamentos(self):
-        pendentes = [r for r in self._reservas if not r.pago]
-        print("\n=== Pagamentos pendentes ===")
-        for r in pendentes:
-            print(f"{r.cpf} - {r.modelo} - R${r.total:.2f}")
+        veiculo = next((v for v in lista_veiculos if v.placa == reserva.placa), None)
+        if not veiculo:
+            print("Veículo da reserva não encontrado.")
+            return
+
+        try:
+            novos_dias = int(input(f"A reserva atual é de {reserva.dias} dias. Digite a nova quantidade de dias: "))
+            if novos_dias <= 0:
+                print("A quantidade de dias deve ser positiva.")
+                return
             
-    def registrar_incidente(self, cpf, placa, data, descricao):
-            reserva = next((r for r in self._reservas if r.cpf == cpf and r.placa == placa), None)
-            if reserva:
-                reserva.adicionar_incidente(data, descricao)
-            else:
-                print("Reserva não encontrada.")
+            # Recalcula o total com base nos novos dias e aplica desconto se necessário
+            total_bruto = veiculo.valor * novos_dias
+            desconto_longa_duracao = 0.0
+            if novos_dias >= 7:
+                desconto_longa_duracao = total_bruto * 0.10
+
+            reserva.dias = novos_dias
+            reserva.total = total_bruto - desconto_longa_duracao
+            
+            print("\nReserva modificada com sucesso!")
+            print(f"Novo período: {reserva.dias} dias. Novo total das diárias: R${reserva.total:.2f}")
+
+        except ValueError:
+            print("Entrada inválida. Digite um número de dias.")
 
     def listar_incidentes_por_placa(self, placa):
-        reservas = [r for r in self._reservas if r.placa == placa]
-        if not reservas:
+        reservas_veiculo = [r for r in self.reservas if r.placa == placa]
+        if not reservas_veiculo:
             print(f"Nenhuma reserva encontrada para a placa {placa}.")
             return
-
-        for r in reservas:
-            print(f"\nIncidentes da reserva do veículo {r.modelo} ({r.placa}):")
-            if r.incidentes:  # usa a propriedade
+        
+        print(f"\nIncidentes do veículo de placa {placa}:")
+        incidentes_encontrados = False
+        for r in reservas_veiculo:
+            if r.incidentes:
+                incidentes_encontrados = True
                 for idx, inc in enumerate(r.incidentes, 1):
-                    print(f"{idx}. Data: {inc['data']} | Descrição: {inc['descricao']}")
-            else:
-                print("Nenhum incidente registrado nesta reserva.")
+                    print(f"- Cliente (CPF {r.cpf}) em {inc['data']}: {inc['descricao']}")
+        
+        if not incidentes_encontrados:
+            print("Nenhum incidente registrado para este veículo.")
+
+    def controle_pagamentos(self):
+        pendentes = [r for r in self.reservas if not r.pago and not r.finalizada]
+        pagas = [r for r in self.reservas if r.pago]
+        
+        print("\n=== CONTROLE DE PAGAMENTOS ===")
+        print("\n--- Pagamentos Pendentes ---")
+        if not pendentes:
+            print("Nenhum pagamento pendente.")
+        else:
+            for r in pendentes:
+                print(f"Cliente (CPF {r.cpf}) - Veículo {r.modelo} - R${r.total + r.deposito:.2f}")
+        
+        print("\n--- Pagamentos Realizados ---")
+        if not pagas:
+            print("Nenhum pagamento realizado.")
+        else:
+             for r in pagas:
+                 print(f"Cliente (CPF {r.cpf}) - Veículo {r.modelo} - R${r.total + r.deposito:.2f}")
