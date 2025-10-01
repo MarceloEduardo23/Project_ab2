@@ -1,9 +1,7 @@
-# C:\Users\ResTIC16\Desktop\PJ\ProjectPS-OO\main.py
-
 import os
 from datetime import datetime
-from clientes import GerenciarCliente, Cliente, Admin
-from veiculos import GerenciarVeiculo, Veiculo
+from clientes import GerenciarCliente, ClienteFactory, AdminFactory
+from veiculos import GerenciarVeiculo, Veiculo, VeiculoBuilder
 from reserva import Gerenciar_Reserva, Reserva
 
 # "Banco de dados" de Cupons de Desconto VIVE AQUI AGORA
@@ -18,12 +16,12 @@ ger_res = Gerenciar_Reserva()
 
 # Dados iniciais para teste
 if not any(v.placa == 'ABC1234' for v in ger_vei.veiculos):
-    v_base1 = Veiculo(modelo='Fiat Mobi', placa='ABC1234', ano='2022', valor=95.50)
-    v_base2 = Veiculo(modelo='Hyundai HB20', placa='DEF5678', ano='2023', valor=120.00)
+    v_base1 = VeiculoBuilder().com_modelo('Fiat Mobi').com_placa('ABC1234').com_ano('2022').com_valor(95.50).build()
+    v_base2 = VeiculoBuilder().com_modelo('Hyundai HB20').com_placa('DEF5678').com_ano('2023').com_valor(120.00).build()
     ger_vei.veiculos.extend([v_base1, v_base2])
 
 if not any(c.cpf == '12345678900' for c in ger_cli.clientes):
-    c_base = Cliente(nome='Arthur Alves', cpf='12345678900')
+    c_base = ClienteFactory().criar_usuario(nome='Arthur Alves', cpf='12345678900')
     ger_cli.clientes.append(c_base)
 
 ADMIN_USER = "admin"
@@ -39,12 +37,12 @@ def login():
         escolha = input("Escolha uma opção: ").strip()
 
         if escolha == '1':
-            entrada = input("Digite seu CPF (ou 'admin'): ").strip().lower()
+            entrada = input("Digite seu CPF: ").strip().lower()
 
             if entrada == ADMIN_USER:
                 senha = input("Digite a senha do administrador: ").strip()
                 if senha == ADMIN_PASS:
-                    admin = Admin(nome='Administrador', cpf='00000000000')
+                    admin = AdminFactory().criar_usuario(nome='Administrador', cpf='00000000000')
                     print("Login de admin bem-sucedido!")
                     input("Pressione Enter para continuar...")
                     return 'admin', admin

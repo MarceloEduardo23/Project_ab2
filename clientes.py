@@ -1,11 +1,24 @@
-# C:\Users\ResTIC16\Desktop\PJ\ProjectPS-OO\clientes.py
-
 import os
+from abc import ABC, abstractmethod
+import copy
+
+class Singleton:
+    _instances = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instancia = super().__new__(cls)
+            cls._instances[cls] = instancia
+        return cls._instances[cls]
 
 class Pessoa:
     def __init__(self, nome='', cpf=''):
         self._nome = nome
         self._cpf = cpf
+
+    # Prototype
+    def clone(self):
+        return copy.deepcopy(self)
 
     @property
     def cpf(self):
@@ -21,7 +34,6 @@ class Pessoa:
             self._nome = novo_nome
         else:
             print("Nome inválido")
-
 
 class Cliente(Pessoa):
     def __init__(self, nome='', cpf=''):
@@ -59,10 +71,40 @@ class Admin(Pessoa):
         return (f"Administrador: {self.nome} | CPF: {self.cpf} | "
                 f"Cargo: {self.cargo} | Nível: {self.nivel_acesso}")
 
+# Abs. Factory com prototype
 
-class GerenciarCliente:
+class AbstractUsuarioFactory(ABC):
+    @abstractmethod
+    def criar_usuario(self, nome, cpf):
+        pass
+
+class ClienteFactory(AbstractUsuarioFactory):
     def __init__(self):
+        self._prototype = Cliente()
+
+    def criar_usuario(self, nome, cpf):
+        novo_cliente = self._prototype.clone()
+        novo_cliente._nome = nome
+        novo_cliente._cpf = cpf
+        return novo_cliente
+    
+class AdminFactory(AbstractUsuarioFactory):
+    def __init__(self):
+        self._prototype = Admin()
+
+    def criar_usuario(self, nome, cpf):
+        novo_admin = self._prototype.clone()
+        novo_admin._nome = nome
+        novo_admin._cpf = cpf
+        return novo_admin
+    
+
+class GerenciarCliente(Singleton):
+    def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
         self.clientes = []
+        self._initialized = True
 
     def cadastrar_cliente(self):
         while True:
@@ -83,7 +125,7 @@ class GerenciarCliente:
             print("CPF já cadastrado! Por favor, utilize outro CPF.")
             return
         else:
-            novo_cliente = Cliente(nome, cpf)
+            novo_cliente = ClienteFactory().criar_usuario(nome, cpf)
             self.clientes.append(novo_cliente)
             print("\nCliente cadastrado com sucesso! \n")
 

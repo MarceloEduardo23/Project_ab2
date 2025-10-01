@@ -1,7 +1,6 @@
-# C:\Users\ResTIC16\Desktop\PJ\ProjectPS-OO\veiculos.py
-
 from datetime import datetime
 import random
+from clientes import Singleton
 
 class Veiculo:
     def __init__(self, modelo='', placa='', ano='', valor=0.0):
@@ -82,10 +81,35 @@ class Veiculo:
         for i, m in enumerate(self._manutencao, 1):
             print(f"{i}. Data: {m['data']} | Desc: {m['descricao']} | Custo: R${m['custo']:.2f}")
 
-
-class GerenciarVeiculo:
+class VeiculoBuilder: # Build
     def __init__(self):
+        self._veiculo = Veiculo()
+    
+    def com_modelo(self, modelo):
+        self._veiculo._modelo = modelo
+        return self
+    
+    def com_placa(self, placa):
+        self._veiculo._placa = placa
+        return self
+    
+    def com_ano(self, ano):
+        self._veiculo._ano = ano
+        return self
+    
+    def com_valor(self, valor):
+        self._veiculo._valor = valor
+        return self
+    
+    def build(self):
+        return self._veiculo
+
+class GerenciarVeiculo(Singleton):
+    def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
         self.veiculos = []
+        self._initialized = True
 
     def cadastrar_veiculo(self):
         modelo = input("Modelo: ").title()
@@ -115,7 +139,13 @@ class GerenciarVeiculo:
             except ValueError:
                 print("Entrada inválida! Digite um número válido.")
 
-        novo = Veiculo(modelo, placa, ano, valor)
+        # Build
+        novo = (VeiculoBuilder()
+                .com_modelo(modelo)
+                .com_placa(placa)
+                .com_ano(ano)
+                .com_valor(valor)
+                .build())
         self.veiculos.append(novo)
         print("Veículo cadastrado com sucesso! \n")
 
@@ -126,7 +156,7 @@ class GerenciarVeiculo:
             print("Nenhum veículo disponível no momento.")
             return
         for i, v in enumerate(disponiveis, start=1):
-            print(f"{i} - Modelo: {v.modelo} | Ano: {v.ano} | R${v.valor:.2f}/dia")
+            print(f"{i} - Modelo: {v.modelo} | Placa: {v.placa} | Ano: {v.ano} | R${v.valor:.2f}/dia")
 
     def estatisticas_utilizacao(self):
         total = len(self.veiculos)

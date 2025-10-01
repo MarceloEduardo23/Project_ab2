@@ -1,9 +1,6 @@
-# C:\Users\ResTIC16\Desktop\PJ\ProjectPS-OO\reserva.py
-
 import os
 from datetime import datetime, timedelta
-
-# NENHUMA IMPORTAÇÃO DO 'main' AQUI EM CIMA
+from clientes import Singleton
 
 class Reserva:
     VALOR_CAUCAO = 250.00
@@ -68,8 +65,6 @@ class Reserva:
         print(f"Caução a ser pago: R${self._deposito:.2f}")
 
     def efetuar_pagamento(self):
-        # <<< MUDANÇA CRUCIAL AQUI
-        # A importação é feita aqui dentro, apenas quando a função é chamada.
         from main import PROMO_CODES
         
         if self.pago:
@@ -185,9 +180,13 @@ class Reserva:
         descricao = input("Descreva o dano/incidente ocorrido: ")
         self.adicionar_incidente(data, descricao)
 
-class Gerenciar_Reserva:
+class Gerenciar_Reserva(Singleton):
     def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
+        
         self.reservas = []
+        self._initialized = True
 
     def fazer_reserva(self, cliente, veiculo, dias):
         nova_reserva = Reserva()
