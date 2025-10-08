@@ -3,7 +3,7 @@ from datetime import datetime
 from clientes import GerenciarCliente, ClienteFactory, AdminFactory
 from veiculos import GerenciarVeiculo, Veiculo, VeiculoBuilder
 from reserva import Gerenciar_Reserva, Reserva
-
+from comandos import *
 # "Banco de dados" de Cupons de Desconto VIVE AQUI AGORA
 PROMO_CODES = {
     "BEMVINDO15": ('perc', 0.15),
@@ -126,10 +126,39 @@ def gerenciar_ofertas():
 def menu():
     while True:
         tipo_usuario, usuario_logado = login()
+
+        # --- Dicionários de Comandos Completos ---
+        admin_commands = {
+            '1': CadastrarClienteCommand(ger_cli),
+            '2': CadastrarVeiculoCommand(ger_vei),
+            '3': ListarVeiculosCommand(ger_vei),
+            '4': AdminExibirContratoCommand(ger_res, ger_cli),
+            '5': RegistrarManutencaoCommand(ger_vei),
+            '6': ListarIncidentesCommand(ger_res),
+            '7': ListarManutencoesCommand(ger_vei),
+            '8': ListarClientesCommand(ger_cli),
+            '9': RelatoriosGerenciaisCommand(ger_vei, ger_res),
+            '10': GerenciarOfertasCommand(gerenciar_ofertas),
+            '11': RastrearVeiculoCommand(ger_vei)
+        }
+        client_commands = {
+            '1': ReservarVeiculoCommand(ger_res, ger_vei, usuario_logado),
+            '2': ExibirContratoCommand(ger_res, usuario_logado),
+            '3': EfetuarPagamentoCommand(ger_res, usuario_logado),
+            '4': RelatarIncidenteCommand(ger_res, usuario_logado),
+            '5': DevolverVeiculoCommand(ger_res, ger_vei, usuario_logado),
+            '6': HistoricoReservasCommand(ger_res, usuario_logado),
+            '7': ModificarReservaCommand(ger_res, ger_vei, usuario_logado),
+            '8': CancelarReservaCommand(ger_res, ger_vei, usuario_logado)
+        }
+        
+        commands_map = admin_commands if tipo_usuario == 'admin' else client_commands
+        logout_option = '12' if tipo_usuario == 'admin' else '9'
+
         while True:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("\n" + "="*50)
-            print("              AV RENTAL CAR")
+            print("               AV RENTAL CAR")
             print("="*50)
 
             if tipo_usuario == 'admin':
@@ -162,144 +191,16 @@ def menu():
 
             opcao = input("Escolha uma opção: ").strip()
 
-            if tipo_usuario == 'admin':
-                if opcao == '1': ger_cli.cadastrar_cliente()
-                elif opcao == '2': ger_vei.cadastrar_veiculo()
-                elif opcao == '3': ger_vei.listar_veiculos()
-                elif opcao == '4':
-                    cpf = input("Digite o CPF do cliente para exibir contrato(s): ").strip()
-                    contratos = [r for r in ger_res.reservas if r.cpf == cpf]
-                    cliente = next((c for c in ger_cli.clientes if c.cpf == cpf), None)
-                    if cliente and contratos:
-                        for r in contratos: r.exibir_contrato(cliente)
-                    else: print("Nenhum contrato encontrado para este CPF.")
-                elif opcao == '5':
-                    placa = input("Digite a placa do veículo: ").strip().upper()
-                    veic = next((v for v in ger_vei.veiculos if v.placa == placa), None)
-                    if veic: veic.registrar_manutencao()
-                    else: print("Veículo não encontrado.")
-                elif opcao == '6':
-                    placa = input("Digite a placa para listar incidentes: ").strip().upper()
-                    ger_res.listar_incidentes_por_placa(placa)
-                elif opcao == '7':
-                    placa = input("Digite a placa para listar manutenções: ").strip().upper()
-                    veic = next((v for v in ger_vei.veiculos if v.placa == placa), None)
-                    if veic: veic.listar_manutencoes()
-                    else: print("Veículo não encontrado.")
-                elif opcao == '8': ger_cli.listar_clientes()
-                elif opcao == '9':
-                    print("\n1 - Estatísticas da frota\n2 - Histórico geral de manutenções\n3 - Controle de pagamentos")
-                    escolha_rel = input("Escolha: ").strip()
-                    if escolha_rel == '1': ger_vei.estatisticas_utilizacao()
-                    elif escolha_rel == '2': ger_vei.historico_manutencoes()
-                    elif escolha_rel == '3': ger_res.controle_pagamentos()
-                    else: print("Opção inválida.")
-                elif opcao == '10': gerenciar_ofertas()
-                elif opcao == '11':
-                    placa = input("Digite a placa do veículo para rastrear: ").strip().upper()
-                    veic = next((v for v in ger_vei.veiculos if v.placa == placa), None)
-                    if veic:
-                        veic.simular_movimentacao()
-                        print(f"Localização atual do {veic.modelo} ({veic.placa}): {veic.localizacao}")
-                        print("(Nota: Esta é uma simulação.)")
-                    else: print("Veículo não encontrado.")
-                elif opcao == '12': print("Fazendo logout..."); break
-                else: print("Opção inválida.")
-            
+            if opcao == logout_option:
+                print("Fazendo logout...")
+                break
+
+            command = commands_map.get(opcao)
+            if command:
+                command.execute()
             else:
-                if opcao == '1':
-                    ger_vei.listar_veiculos()
-                    veiculos_disp = [v for v in ger_vei.veiculos if v.disponivel]
-                    if veiculos_disp:
-                        try:
-                            escolha = int(input("Escolha o número do veículo: "))
-                            if 1 <= escolha <= len(veiculos_disp):
-                                veiculo_escolhido = veiculos_disp[escolha-1]
-                                dias = int(input("Por quantos dias deseja alugar? "))
-                                if dias > 0: ger_res.fazer_reserva(usuario_logado, veiculo_escolhido, dias)
-                                else: print("Quantidade de dias deve ser maior que zero.")
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '2':
-                    contratos = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf]
-                    if contratos:
-                        for r in contratos: r.exibir_contrato(usuario_logado)
-                    else: print("Nenhuma reserva encontrada.")
-                elif opcao == '3':
-                    r_list = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf and not r.pago]
-                    if not r_list: print("Nenhuma reserva em aberto para pagamento.")
-                    else:
-                        print("\n=== SUAS RESERVAS EM ABERTO ===")
-                        for idx, r in enumerate(r_list, 1):
-                            print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa} | Dias: {r.dias} | Total: R${r.total + Reserva.VALOR_CAUCAO:.2f}")
-                        try:
-                            escolha = int(input("Escolha o número da reserva para pagar: "))
-                            if 1 <= escolha <= len(r_list): r_list[escolha-1].efetuar_pagamento()
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '4':
-                    r_list = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf and not r.finalizada]
-                    if not r_list: print("Nenhuma reserva em andamento para relatar incidente.")
-                    else:
-                        print("\n=== SUAS RESERVAS EM ANDAMENTO ===")
-                        for idx, r in enumerate(r_list, 1): print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa}")
-                        try:
-                            escolha = int(input("Escolha a reserva para relatar o incidente: "))
-                            if 1 <= escolha <= len(r_list):
-                                r = r_list[escolha - 1]
-                                data = datetime.now().strftime("%d/%m/%Y")
-                                descricao = input("Descrição do incidente: ").strip()
-                                r.adicionar_incidente(data, descricao)
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '5':
-                    r_list = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf and r.pago and not r.finalizada]
-                    if not r_list: print("Nenhuma reserva paga e ativa para devolução.")
-                    else:
-                        print("\n=== SUAS RESERVAS ATIVAS PARA DEVOLUÇÃO ===")
-                        for idx, r in enumerate(r_list, 1): print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa}")
-                        try:
-                            escolha = int(input("Escolha o número da reserva para devolver: "))
-                            if 1 <= escolha <= len(r_list): r_list[escolha-1].devolver_veiculo(ger_vei.veiculos)
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '6':
-                    historico = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf]
-                    if not historico: print("Nenhum histórico de reservas encontrado.")
-                    else:
-                        print("\n=== SEU HISTÓRICO DE RESERVAS ===")
-                        for r in historico:
-                            status = "Finalizada" if r.finalizada else ("Paga" if r.pago else "Pendente")
-                            print(f"\nVeículo: {r.modelo} ({r.placa}) - Status: {status}")
-                            print(f"  Período: {r.dias} dias | Total (diárias): R${r.total:.2f}")
-                            if r.finalizada and r._avaliacao:
-                                print(f"  Sua Avaliação: Nota {r._avaliacao} - '{r._comentario}'")
-                elif opcao == '7':
-                    r_list = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf and not r.pago and not r.finalizada]
-                    if not r_list: print("Nenhuma reserva não paga disponível para modificação.")
-                    else:
-                        print("\n=== SUAS RESERVAS NÃO PAGAS ===")
-                        for idx, r in enumerate(r_list, 1): print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa} | Dias: {r.dias}")
-                        try:
-                            escolha = int(input("Escolha o número da reserva para modificar: "))
-                            if 1 <= escolha <= len(r_list): ger_res.modificar_reserva(r_list[escolha-1], ger_vei.veiculos)
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '8':
-                    r_list = [r for r in ger_res.reservas if r.cpf == usuario_logado.cpf and not r.pago and not r.finalizada]
-                    if not r_list: print("Nenhuma reserva não paga disponível para cancelamento.")
-                    else:
-                        print("\n=== SUAS RESERVAS NÃO PAGAS ===")
-                        for idx, r in enumerate(r_list, 1): print(f"{idx}. Veículo: {r.modelo} | Placa: {r.placa}")
-                        try:
-                            escolha = int(input("Escolha o número da reserva para cancelar: "))
-                            if 1 <= escolha <= len(r_list): ger_res.cancelar_reserva(r_list[escolha-1], ger_vei.veiculos)
-                            else: print("Opção inválida.")
-                        except (ValueError, IndexError): print("Entrada inválida.")
-                elif opcao == '9': print("Fazendo logout..."); break
-                else: print("Opção inválida.")
+                print("Opção inválida.")
             
             input("\nPressione Enter para continuar...")
-
 if __name__ == "__main__":
     menu()

@@ -1,6 +1,88 @@
 import os
 from datetime import datetime, timedelta
 from clientes import Singleton
+from abc import ABC, abstractclassmethod, abstractmethod
+
+# PADRÃO STRATEGY
+class IPaymentStrategy(ABC):
+    @abstractmethod
+    def process_payment(self, total_diarias: float, caucao: float) -> float:
+        pass
+
+class PagamentoAVistaStrategy(IPaymentStrategy):
+    def process_payment(self, total_diarias: float, caucao: float) -> float:
+        valor_com_desconto = total_diarias * 0.90
+        print(f"INFO: Desconto de 10% para pagamento à vista aplicado sobre as diárias.")
+        return valor_com_desconto + caucao
+
+class PagamentoCartaoStrategy(IPaymentStrategy):
+    def process_payment(self, total_diarias: float, caucao: float) -> float:
+        print("INFO: Pagamento com cartão selecionado (sem desconto adicional).")
+        return total_diarias + caucao
+        
+class PagamentoPixStrategy(IPaymentStrategy):
+    """
+    Uma nova estratégia! Pagamento via PIX com 5% de desconto.
+    """
+    def process_payment(self, total_diarias: float, caucao: float) -> float:
+        valor_com_desconto = total_diarias * 0.95
+        print(f"INFO: Desconto de 5% para pagamento via PIX aplicado sobre as diárias.")
+        return valor_com_desconto + caucao
+# implementor
+class INotificationSender(ABC):
+    @abstractclassmethod
+    def send(self, message: str):
+        pass
+
+# Concrete Implementors
+class ConsoleSender(INotificationSender):
+    def send(self, message: str):
+        print("\n--- [NOTIFICAÇÃO VIA CONSOLE] ---")
+        print(message)
+        print("----------------------------------\n")
+
+class EmailSender(INotificationSender):
+    """Simula o envio de uma notificação por email."""
+    def send(self, message: str):
+        print("\n--- [SIMULANDO ENVIO DE EMAIL] ---")
+        print(f"Para: cliente@email.com")
+        print(f"Assunto: Novidades da sua Reserva")
+        print(f"Corpo: {message}")
+        print("----------------------------------\n")
+        
+class SmsSender(INotificationSender):
+    """Simula o envio de uma notificação por SMS."""
+    def send(self, message: str):
+        print(f"\n--- [SMS PARA +5511999998888]: {message} ---\n")
+
+# Abstraction
+class Notification:
+    def __init__(self, sender: INotificationSender):
+        self._sender = sender
+    def send_message(self, message: str):
+        self._sender.send(message)
+
+# Refined Abstractions
+class ConfirmationNotification(Notification):
+    def __init__(self, sender: INotificationSender, reserva):
+        super().__init__(sender)
+        self._reserva = reserva
+    def notify(self):
+        message = (f"Olá! Sua reserva para o veículo {self._reserva.modelo} "
+                   f"por {self._reserva.dias} dias foi confirmada com sucesso. "
+                   f"Valor total: R${self._reserva.total:.2f}")
+        print("-> Preparando notificação de confirmação...")
+        self.send_message(message)
+
+class PaymentNotification(Notification):
+    def __init__(self, sender: INotificationSender, reserva):
+        super().__init__(sender)
+        self._reserva = reserva
+    def notify(self):
+        message = (f"Seu pagamento no valor de R${self._reserva.total + self._reserva.VALOR_CAUCAO:.2f} "
+                   f"para a reserva do veículo {self._reserva.modelo} foi processado. Obrigado!")
+        print("-> Preparando notificação de pagamento...")
+        self.send_message(message)
 
 class Reserva:
     VALOR_CAUCAO = 250.00
@@ -64,6 +146,8 @@ class Reserva:
         print(f"Valor das diárias (com desconto, se aplicável): R${self.total:.2f}")
         print(f"Caução a ser pago: R${self._deposito:.2f}")
 
+# Dentro da classe Reserva, substitua o método inteiro:
+
     def efetuar_pagamento(self):
         from main import PROMO_CODES
         
@@ -89,27 +173,50 @@ class Reserva:
         elif cupom:
             print("Cupom inválido ou expirado.")
 
-        total_a_pagar = total_diarias + self._deposito
-        print(f"\nTotal das diárias (com descontos): R$ {total_diarias:.2f}")
+        print(f"\nTotal das diárias (com descontos de cupom, se houver): R$ {total_diarias:.2f}")
         print(f"Valor do caução: R$ {self._deposito:.2f}")
-        print(f"TOTAL A PAGAR: R$ {total_a_pagar:.2f}")
 
-        while True:
-            opcao = input("Pagamento à vista (1) ou parcelado (2)? ").strip()
-            if opcao == '1':
-                valor_com_desconto = total_diarias * 0.9 + self._deposito
-                print(f"Desconto de 10% nas diárias aplicado. Total a pagar: R${valor_com_desconto:.2f}")
-                confirmar = input("Confirmar pagamento? (s/n) ").lower()
-                if confirmar == 's':
-                    self._pago = True
-                    print("Pagamento efetuado com sucesso!")
-                break
-            elif opcao == '2':
-                # Implementação de parcelamento
-                print("Parcelamento indisponível no momento.")
-                break
+        # --- A MÁGICA DO STRATEGY ACONTECE AQUI ---
+        
+        # Mapeia a entrada do usuário para a classe da Estratégia
+        payment_strategies = {
+            '1': PagamentoAVistaStrategy,
+            '2': PagamentoCartaoStrategy,
+            '3': PagamentoPixStrategy
+        }
+        
+        strategy = None
+        while not strategy:
+            print("\nEscolha a forma de pagamento:")
+            print("1 - À Vista (10% de desconto nas diárias)")
+            print("2 - Cartão de Crédito")
+            print("3 - PIX (5% de desconto nas diárias)")
+            opcao = input("Opção: ").strip()
+
+            if opcao in payment_strategies:
+                # Cria a instância da estratégia escolhida
+                strategy_class = payment_strategies[opcao]
+                strategy = strategy_class()
             else:
-                print("Opção inválida.")
+                print("Opção inválida. Tente novamente.")
+        
+        # O 'Contexto' (Reserva) usa o objeto da estratégia para calcular o valor.
+        # Ele não sabe qual algoritmo está sendo executado, apenas que ele existe.
+        total_a_pagar = strategy.process_payment(total_diarias, self._deposito)
+
+        print(f"\nTOTAL FINAL A PAGAR: R$ {total_a_pagar:.2f}")
+
+        confirmar = input("Confirmar pagamento? (s/n) ").lower()
+        if confirmar == 's':
+            self._pago = True
+            print("Pagamento efetuado com sucesso!")
+            
+            # (Opcional, mas mantém a consistência do padrão Bridge que fizemos antes)
+            sender_sms = SmsSender()
+            notificacao_pagamento = PaymentNotification(sender_sms, self)
+            notificacao_pagamento.notify()
+        else:
+            print("Pagamento cancelado.")
     
     def devolver_veiculo(self, lista_veiculos):
         if not self.pago:
@@ -192,6 +299,15 @@ class Gerenciar_Reserva(Singleton):
         nova_reserva = Reserva()
         nova_reserva.fazer_reserva(cliente, veiculo, dias)
         self.reservas.append(nova_reserva)
+        # Canal 1: Console
+        sender_console = ConsoleSender()
+        notificacao_console = ConfirmationNotification(sender_console, nova_reserva)
+        notificacao_console.notify()
+        
+        # Canal 2: Email (a notificação não muda, só o "enviador")
+        sender_email = EmailSender()
+        notificacao_email = ConfirmationNotification(sender_email, nova_reserva)
+        notificacao_email.notify()
 
     def cancelar_reserva(self, reserva, lista_veiculos):
         if reserva.pago:

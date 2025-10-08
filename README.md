@@ -29,6 +29,23 @@ O sistema oferece funcionalidades completas como cadastro de clientes e veículo
 
 ---
 
+## 🏛️ Arquitetura e Padrões de Projeto
+Para garantir um código flexível, manutenível e escalável, o sistema foi construído utilizando diversos Padrões de Projeto (Design Patterns). O projeto já contava com uma base sólida utilizando padrões como Singleton, Factory, Builder e Prototype. As seguintes modificações foram realizadas para aprimorar ainda mais a arquitetura:
+
+* **Adapter**: Foi aplicado no sistema de rastreamento GPS.
+
+* **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
+
+---
+
+## Padrões Comportamentais
+
+* **Strategy**: Foi aplicado no método de pagamento da classe Reserva.
+
+* **Command**: Foi aplicado no menu principal e no tratamento das ações do usuário em main.py.
+
+---
+
 ## 💸 Gestão de Caução e Reembolso
 
 A política de pagamentos e reembolsos do sistema foi implementada de forma simples e direta:

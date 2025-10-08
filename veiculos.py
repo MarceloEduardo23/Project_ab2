@@ -2,6 +2,44 @@ from datetime import datetime
 import random
 from clientes import Singleton
 
+# Adapter
+class ExternalGpsService:
+    def __init__(self):
+        self._locations = {}
+
+    def _get_or_create_location(self, placa: str):
+        if placa not in self._locations:
+            self._locations[placa] = {
+                "lat": random.uniform(-23.5, -23.6),
+                "lon": random.uniform(-46.6, -46.7)
+            }
+        return self._locations[placa]
+
+    def fetch_coords(self, placa_veiculo: str) -> dict:
+        print("-> [API Externa] Buscando coordenadas...")
+        return self._get_or_create_location(placa_veiculo)
+
+    def update_coords(self, placa_veiculo: str):
+        print("-> [API Externa] Veículo se moveu. Atualizando coordenadas...")
+        location = self._get_or_create_location(placa_veiculo)
+        location['lat'] += random.uniform(-0.01, 0.01)
+        location['lon'] += random.uniform(-0.01, 0.01)
+
+class GpsAdapter: # Adapter
+    def __init__(self, gps_service: ExternalGpsService, placa: str):
+        self._adaptee = gps_service
+        self._placa = placa
+ 
+    @property 
+    def localizacao(self) -> str:
+        print("-> [Adapter] Chamando API externa e formatando o resultado...")
+        coords = self._adaptee.fetch_coords(self._placa)
+        return f"Lat: {coords['lat']:.6f}, Lon: {coords['lon']:.6f} (Via API Externa)"
+
+    def simular_movimentacao(self):
+        print("-> [Adapter] Repassando simulação de movimento para a API externa...")
+        self._adaptee.update_coords(self._placa)
+
 class Veiculo:
     def __init__(self, modelo='', placa='', ano='', valor=0.0):
         self._modelo = modelo
@@ -10,9 +48,8 @@ class Veiculo:
         self._valor = valor
         self._disponivel = True
         self._manutencao = []
-        # Simulação de GPS: Coordenadas iniciais aleatórias (Ex: São Paulo)
-        self._latitude = random.uniform(-23.5, -23.6)
-        self._longitude = random.uniform(-46.6, -46.7)
+        gps_service = ExternalGpsService()
+        self._gps_tracker = GpsAdapter(gps_service, self.placa) # Adapter
 
     @property
     def modelo(self):
@@ -40,13 +77,10 @@ class Veiculo:
 
     @property
     def localizacao(self):
-        """Propriedade para obter a localização atual do veículo."""
-        return f"Lat: {self._latitude:.6f}, Lon: {self._longitude:.6f}"
+        return self._gps_tracker.localizacao # Adapter
 
     def simular_movimentacao(self):
-        """Simula a movimentação do veículo alterando levemente suas coordenadas."""
-        self._latitude += random.uniform(-0.01, 0.01)
-        self._longitude += random.uniform(-0.01, 0.01)
+        self._gps_tracker.simular_movimentacao()
 
     def registrar_manutencao(self):
         desc = input(f"Descreva a manutenção do veículo {self._modelo} ({self._placa}): ").strip()
