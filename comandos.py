@@ -3,6 +3,15 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+# Padrão Composite:
+class IRelatorioComponent(ABC):
+    @abstractmethod
+    def execute(self):
+        pass
+    @abstractmethod
+    def get_titulo(self) -> str:
+        pass    
+
 # =============================================================================
 # --- Interface do Comando ---
 # =============================================================================
@@ -14,6 +23,50 @@ class ICommand(ABC):
 # =============================================================================
 # --- Comandos do Administrador ---
 # =============================================================================
+
+# Padrão Composite:
+class RelatorioLeaf(IRelatorioComponent, ICommand):
+    def __init__(self, titulo: str, receiver_func):
+        self._titulo = titulo
+        self._receiver_func = receiver_func
+
+    def execute(self):
+        self._receiver_func()
+
+    def get_titulo(self) -> str:
+        return self._titulo
+    
+class RelatorioComposite(IRelatorioComponent):
+    def __init__(self, titulo: str):
+        self._titulo = titulo
+        self._filhos = []
+
+    def add(self, componente: IRelatorioComponent):
+        self._filhos.append(componente)
+
+    def get_titulo(self) -> str:
+        return self._titulo
+
+    def execute(self):
+        while True:
+            print(f"\n--- Menu de Relatórios: {self._titulo} ---")
+            for i, rel in enumerate(self._filhos, 1):
+                print(f"{i} - {rel.get_titulo()}")
+            print("0 - Voltar")
+            escolha = input("Escolha: ").strip()
+
+            if escolha == '0':
+                break
+            try:
+                idx = int(escolha) - 1
+                if 0 <= idx < len(self._filhos):
+                    self._filhos[idx].execute() 
+                else:
+                    print("Opção inválida.")
+            except ValueError:
+                print("Entrada inválida.")
+
+#####
 
 class CadastrarClienteCommand(ICommand):
     def __init__(self, ger_cli):
@@ -84,19 +137,16 @@ class ListarClientesCommand(ICommand):
 
 class RelatoriosGerenciaisCommand(ICommand):
     def __init__(self, ger_vei, ger_res):
-        self._ger_vei = ger_vei
-        self._ger_res = ger_res
+        self._menu_relatorios = RelatorioComposite("Relatórios Gerenciais")
+        grupo_frota = RelatorioComposite("Relatórios de Frota")
+        grupo_frota.add(RelatorioLeaf("Estatísticas da frota", ger_vei.estatisticas_utilizacao))
+        grupo_frota.add(RelatorioLeaf("Histórico geral de manutenções", ger_vei.historico_manutencoes))
+        rel_pagamentos = RelatorioLeaf("Controle de pagamentos", ger_res.controle_pagamentos)
+        self._menu_relatorios.add(grupo_frota)
+        self._menu_relatorios.add(rel_pagamentos)
+        
     def execute(self):
-        print("\n1 - Estatísticas da frota\n2 - Histórico geral de manutenções\n3 - Controle de pagamentos")
-        escolha_rel = input("Escolha: ").strip()
-        if escolha_rel == '1':
-            self._ger_vei.estatisticas_utilizacao()
-        elif escolha_rel == '2':
-            self._ger_vei.historico_manutencoes()
-        elif escolha_rel == '3':
-            self._ger_res.controle_pagamentos()
-        else:
-            print("Opção inválida.")
+        self._menu_relatorios.execute()
 
 class GerenciarOfertasCommand(ICommand):
     def __init__(self, gerenciar_ofertas_func):

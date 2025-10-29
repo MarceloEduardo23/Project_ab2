@@ -36,6 +36,8 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
 
 * **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
 
+* **Composite**: Foi aplicado no menu de relatórios gerenciais, permitindo que sub-menus (Composite) e relatórios finais (Leaf) sejam tratados da mesma forma.
+
 ---
 
 ## Padrões Comportamentais
@@ -43,6 +45,8 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
 * **Strategy**: Foi aplicado no método de pagamento da classe Reserva.
 
 * **Command**: Foi aplicado no menu principal e no tratamento das ações do usuário em main.py.
+
+* **Iterator**: Foi aplicado na classe GerenciarVeiculo para fornecer uma forma de acessar a coleção de veículos (filtrando por padrão apenas os disponíveis) sem expor a estrutura de lista interna.
 
 ---
 

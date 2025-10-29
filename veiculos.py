@@ -1,6 +1,29 @@
 from datetime import datetime
 import random
 from clientes import Singleton
+from collections.abc import Iterator, Iterable
+from abc import ABC, abstractmethod
+
+# Iterator
+
+class VeiculoIterator(Iterator):
+    def __init__(self, colecao: list, filtro_disponivel: bool = True):
+        self._colecao = colecao
+        self._filtro_disponivel = filtro_disponivel
+        self._indice = 0
+
+    def __next__(self):
+        while self._indice < len(self._colecao):
+            veiculo = self._colecao[self._indice]
+            self._indice += 1
+
+            if self._filtro_disponivel and not veiculo.disponivel:
+                continue
+
+            return veiculo
+
+        raise StopIteration
+    
 
 # Adapter
 class ExternalGpsService:
@@ -138,12 +161,18 @@ class VeiculoBuilder: # Build
     def build(self):
         return self._veiculo
 
-class GerenciarVeiculo(Singleton):
+class GerenciarVeiculo(Singleton, Iterable):
     def __init__(self):
         if hasattr(self, '_initialized'):
             return
         self.veiculos = []
         self._initialized = True
+
+    def __iter__(self) -> VeiculoIterator:
+        return VeiculoIterator(self.veiculos, filtro_disponivel=True)
+
+    def iter_todos_veiculos(self) -> VeiculoIterator:
+        return VeiculoIterator(self.veiculos, filtro_disponivel=False)
 
     def cadastrar_veiculo(self):
         modelo = input("Modelo: ").title()
@@ -185,7 +214,7 @@ class GerenciarVeiculo(Singleton):
 
     def listar_veiculos(self):
         print("\n=== VEÍCULOS DISPONÍVEIS ===")
-        disponiveis = [v for v in self.veiculos if v.disponivel]
+        disponiveis = list(self) # 'list(self)' chama o __iter__ e consome o iterador
         if not disponiveis:
             print("Nenhum veículo disponível no momento.")
             return
@@ -197,7 +226,7 @@ class GerenciarVeiculo(Singleton):
         if total == 0:
             print("\nNenhum veículo cadastrado na frota.")
             return
-        disponiveis = sum(1 for v in self.veiculos if v.disponivel)
+        disponiveis = sum(1 for v in self)
         alugados = total - disponiveis
         print(f"\nTotal de veículos: {total}")
         print(f"Disponíveis: {disponiveis}")
@@ -206,7 +235,7 @@ class GerenciarVeiculo(Singleton):
     def historico_manutencoes(self):
         print("\n=== HISTÓRICO GERAL DE MANUTENÇÕES ===")
         manutencoes_existentes = False
-        for v in self.veiculos:
+        for v in self.iter_todos_veiculos():
             if v.manutencao:
                 manutencoes_existentes = True
                 print(f"\nVeículo: {v.modelo} ({v.placa})")
