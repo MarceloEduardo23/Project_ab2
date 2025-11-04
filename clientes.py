@@ -1,6 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 import copy
+from exceptions import CpfJaCadastradoError
 
 class Singleton:
     _instances = {}
@@ -122,12 +123,11 @@ class GerenciarCliente(Singleton):
                 break
 
         if cpf in [c.cpf for c in self.clientes]:
-            print("CPF já cadastrado! Por favor, utilize outro CPF.")
-            return
-        else:
-            novo_cliente = ClienteFactory().criar_usuario(nome, cpf)
-            self.clientes.append(novo_cliente)
-            print("\nCliente cadastrado com sucesso! \n")
+            raise CpfJaCadastradoError("CPF já cadastrado! Por favor, utilize outro CPF.")
+        
+        novo_cliente = ClienteFactory().criar_usuario(nome, cpf)
+        self.clientes.append(novo_cliente)
+        print("\nCliente cadastrado com sucesso! \n")
 
     def listar_clientes(self):
         os.system('cls' if os.name == 'nt' else 'clear')

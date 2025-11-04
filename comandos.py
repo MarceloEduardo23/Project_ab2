@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from exceptions import AppError, ReservaNaoPagaError, VeiculoIndisponivelError
 
 # Padrão Composite:
 class IRelatorioComponent(ABC):
@@ -242,7 +243,12 @@ class DevolverVeiculoCommand(ICommand):
             escolha = int(input("Escolha o número da reserva para devolver: "))
             if 1 <= escolha <= len(r_list): r_list[escolha-1].devolver_veiculo(self._ger_vei.veiculos)
             else: print("Opção inválida.")
-        except (ValueError, IndexError): print("Entrada inválida.")
+        except (ReservaNaoPagaError, VeiculoIndisponivelError) as e:
+            print(f"\n[ERRO NA DEVOLUÇÃO]: {e}")
+        except AppError as e:
+            print(f"\n[ERRO]: {e}")
+        except (ValueError, IndexError):
+            print("Entrada inválida.")
 
 class HistoricoReservasCommand(ICommand):
     def __init__(self, ger_res, usuario):

@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from clientes import Singleton
 from abc import ABC, abstractclassmethod, abstractmethod
+from exceptions import ReservaJaPagaError, ReservaNaoPagaError, DadosInvalidosError, VeiculoNaoEncontradoError
 
 # PADRÃO STRATEGY
 class IPaymentStrategy(ABC):
@@ -124,8 +125,7 @@ class Reserva:
 
     def fazer_reserva(self, cliente, veiculo, dias):
         if not cliente or not veiculo or dias <= 0:
-            print("Dados inválidos para reserva.")
-            return
+            raise DadosInvalidosError("Dados inválidos para reserva (cliente, veiculo ou dias).")
 
         self._cpf = cliente.cpf
         self._placa = veiculo.placa
@@ -220,13 +220,11 @@ class Reserva:
     
     def devolver_veiculo(self, lista_veiculos):
         if not self.pago:
-            print("Não é possível devolver o veículo antes de efetuar o pagamento.\n")
-            return
+            raise ReservaNaoPagaError("Não é possível devolver o veículo antes de efetuar o pagamento.")
 
         veiculo = next((v for v in lista_veiculos if v.placa == self.placa), None)
         if not veiculo:
-            print("Veículo não encontrado!\n")
-            return
+            raise VeiculoNaoEncontradoError(f"Veículo com placa {self.placa} não encontrado na frota.")
 
         status_reembolso = ""
         incidente_devolucao = input("Houve algum novo dano ou incidente com o veículo? (s/n) ").lower()
