@@ -4,6 +4,8 @@ from clientes import GerenciarCliente, ClienteFactory, AdminFactory
 from veiculos import GerenciarVeiculo, Veiculo, VeiculoBuilder
 from reserva import Gerenciar_Reserva, Reserva
 from comandos import *
+from exceptions import CpfJaCadastradoError
+
 # "Banco de dados" de Cupons de Desconto VIVE AQUI AGORA
 PROMO_CODES = {
     "BEMVINDO15": ('perc', 0.15),
@@ -65,8 +67,12 @@ def login():
                 input("Pressione Enter para tentar novamente...")
 
         elif escolha == '2':
-            ger_cli.cadastrar_cliente()
-            input("Pressione Enter para fazer o login...")
+            try: 
+                ger_cli.cadastrar_cliente()
+                input("Pressione Enter para fazer login...")
+            except CpfJaCadastradoError as e:
+                print(f"\n[ERRO NO CADASTRO]: {e}")
+                input("Pressione Enter para tentar novamente...")
 
         elif escolha == '0':
             print("Saindo do sistema...")

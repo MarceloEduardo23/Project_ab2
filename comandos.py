@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from exceptions import AppError, ReservaNaoPagaError, VeiculoIndisponivelError
+from exceptions import AppError, ReservaNaoPagaError, VeiculoIndisponivelError, CpfJaCadastradoError
 
 # Padrão Composite:
 class IRelatorioComponent(ABC):
@@ -73,7 +73,10 @@ class CadastrarClienteCommand(ICommand):
     def __init__(self, ger_cli):
         self._ger_cli = ger_cli
     def execute(self):
-        self._ger_cli.cadastrar_cliente()
+        try:
+            self._ger_cli.cadastrar_cliente()
+        except CpfJaCadastradoError as e:
+            print(f"\n[ERRO NO CADASTRO]: {e}")
 
 class CadastrarVeiculoCommand(ICommand):
     def __init__(self, ger_vei):
