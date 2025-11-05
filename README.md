@@ -50,6 +50,19 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
 
 ---
 
+🛡️ Tratamento de Erros e Exceções
+Para aumentar a robustez e a manutenibilidade do código, o sistema implementa um tratamento de exceções customizadas para gerenciar erros de regras de negócio.
+
+Isso separa a lógica de identificação do erro (na camada de modelo/dados) da lógica de apresentação do erro (na camada de visão/controlador).
+
+Criação de Exceções Customizadas: Foi criado um arquivo exceptions.py que define erros de negócio específicos, como CpfJaCadastradoError, ReservaJaPagaError, VeiculoIndisponivelError, etc., todos herdando de uma classe base AppError.
+
+Lançamento (Raise): As classes de lógica (ex: GerenciarCliente em clientes.py, Reserva em reserva.py) agora lançam (raise) essas exceções específicas quando uma regra de negócio é violada (ex: raise CpfJaCadastradoError(...)).
+
+Captura (Try...Except): As classes "controladoras" (ex: CadastrarClienteCommand em comandos.py e a função login em main.py) são responsáveis por capturar (try...except) essas exceções específicas e apresentar uma mensagem amigável ao usuário, sem que o programa quebre.
+
+---
+
 ## 💸 Gestão de Caução e Reembolso
 
 A política de pagamentos e reembolsos do sistema foi implementada de forma simples e direta:
@@ -77,4 +90,5 @@ Para rodar o sistema, execute o arquivo principal no seu terminal:
 
 ```bash
 python main.py
+
 ```
