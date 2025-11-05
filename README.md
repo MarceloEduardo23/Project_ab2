@@ -30,136 +30,36 @@ O sistema oferece funcionalidades completas como cadastro de clientes e veículo
 ---
 
 ## 🏛️ Arquitetura e Padrões de Projeto
-Para garantir um código flexível, manutenível e escalável, o sistema foi construído utilizando diversos Padrões de Projeto (Design Patterns). O projeto já contava com uma base sólida utilizando padrões como Singleton, Factory, Builder e Prototype. As seguintes modificações foram realizadas para aprimorar ainda mais a arquitetura:
+Para garantir um código flexível, manutenível e escalável, o sistema foi construído utilizando diversos Padrões de Projeto (Design Patterns), organizados em suas três categorias principais:
 
-* **Adapter**: Foi aplicado no sistema de rastreamento GPS.
-``` bash
-   # Em Project_ab2/veiculos.py
-   
-   class ExternalGpsService:
-       def fetch_coords(self, placa_veiculo: str) -> dict:
-           print("-> [API Externa] Buscando coordenadas...")
-           # ... lógica para buscar ou criar coordenadas ...
-           return self._locations[placa]
-   
-   # O Adapter que traduz a interface
-   class GpsAdapter:
-       def __init__(self, gps_service: ExternalGpsService, placa: str):
-           self._adaptee = gps_service
-           self._placa = placa
-    
-       @property 
-       def localizacao(self) -> str:
-           print("-> [Adapter] Chamando API externa e formatando o resultado...")
-           coords = self._adaptee.fetch_coords(self._placa)
-           return f"Lat: {coords['lat']:.6f}, Lon: {coords['lon']:.6f} (Via API Externa)"
-   
-   # O Cliente (Veiculo) usa o Adapter sem saber da complexidade
-   class Veiculo:
-       def __init__(self, modelo='', placa='', ano='', valor=0.0):
-           # ...
-           gps_service = ExternalGpsService()
-           # O Veiculo é instanciado com o GpsAdapter
-           self._gps_tracker = GpsAdapter(gps_service, self.placa)
-   
-       @property
-       def localizacao(self):
-           return self._gps_tracker.localizacao
-```
+## Padrões Criacionais
+* **Singleton**: Garante uma instância única para as classes de gerenciamento (GerenciarCliente, GerenciarVeiculo, Gerenciar_Reserva), centralizando o estado da aplicação.
 
-* **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
-``` bash
-   # Em Project_ab2/reserva.py
-   
-   # Interface Implementadora (Implementor)
-   class INotificationSender(ABC):
-       @abstractclassmethod
-       def send(self, message: str):
-           pass
-   
-   # Implementadores Concretos (Canais de envio)
-   class ConsoleSender(INotificationSender):
-       def send(self, message: str):
-           print("\n--- [NOTIFICAÇÃO VIA CONSOLE] ---")
-           print(message)
-   
-   class SmsSender(INotificationSender):
-   =    def send(self, message: str):
-           print(f"\n--- [SMS PARA +5511999998888]: {message} ---\n")
-   
-   # Abstração (Gerenciador de Notificação)
-   class Notification:
-       def __init__(self, sender: INotificationSender):
-           self._sender = sender
-       def send_message(self, message: str):
-           self._sender.send(message)
-   
-   # Abstração Refinada (Tipos de Notificação)
-   class ConfirmationNotification(Notification):
-       def __init__(self, sender: INotificationSender, reserva):
-           super().__init__(sender) # Recebe o implementador (sender)
-           self._reserva = reserva
-       def notify(self):
-           message = (f"Olá! Sua reserva para o veículo {self._reserva.modelo} "
-                      f"foi confirmada com sucesso.")
-           self.send_message(message) # Usa o implementador
-```
+* **Abstract Factory**: Utilizado para criar famílias de objetos relacionados (neste caso, Cliente e Admin) através das classes ClienteFactory e AdminFactory.
 
-* **Composite**: Foi aplicado no menu de relatórios gerenciais, permitindo que sub-menus (Composite) e relatórios finais (Leaf) sejam tratados da mesma forma.
-``` bash
-   # Em Project_ab2/comandos.py
-   
-   # Componente (Interface Comum)
-   class IRelatorioComponent(ABC):
-       @abstractmethod
-       def execute(self):
-           pass
-       @abstractmethod
-       def get_titulo(self) -> str:
-           pass    
-   
-   # Folha (Leaf) - O objeto final que executa uma ação
-   class RelatorioLeaf(IRelatorioComponent, ICommand):
-       def __init__(self, titulo: str, receiver_func):
-           self._titulo = titulo
-           self._receiver_func = receiver_func
-   
-       def execute(self):
-           self._receiver_func()
-   
-       def get_titulo(self) -> str:
-           return self._titulo
-       
-   # Composto (Composite) - O "container" que agrupa outros componentes
-   class RelatorioComposite(IRelatorioComponent):
-       def __init__(self, titulo: str):
-           self._titulo = titulo
-           self._filhos = [] # Pode conter Leafs ou outros Composites
-   
-       def add(self, componente: IRelatorioComponent):
-           self._filhos.append(componente)
-   
-       def get_titulo(self) -> str:
-           return self._titulo
-   
-       def execute(self):
-           # Mostra um submenu com os filhos e permite escolher
-           while True:
-               print(f"\n--- Menu de Relatórios: {self._titulo} ---")
-               for i, rel in enumerate(self._filhos, 1):
-                   print(f"{i} - {rel.get_titulo()}")
-               # ... (lógica do menu) ...
-```
+* **Builder**: Aplicado na criação de objetos Veiculo, permitindo uma construção passo a passo e mais legível (VeiculoBuilder).
+
+* **Prototype**: Usado em conjunto com a Factory (ClienteFactory), permitindo a criação de novos usuários (Cliente/Admin) através da clonagem de um protótipo.
+
+---
+
+## Padrões Estruturais
+
+* **Adapter**: Aplicado no sistema de rastreamento GPS, onde GpsAdapter "traduz" a interface de um serviço externo (ExternalGpsService) para uma interface esperada pelo sistema (Veiculo).
+
+* **Bridge**: Utilizado no sistema de notificações. A abstração (Notification) é separada de sua implementação (INotificationSender), permitindo que diferentes tipos de notificação (ex: ConfirmationNotification) sejam enviados por diferentes canais (ex: ConsoleSender, SmsSender) sem acoplamento.
+
+* **Composite**: Aplicado no menu de relatórios gerenciais. Permite que tanto relatórios individuais (RelatorioLeaf) quanto sub-menus (RelatorioComposite) sejam tratados da mesma forma através da interface IRelatorioComponent.
 
 ---
 
 ## Padrões Comportamentais
 
-* **Strategy**: Foi aplicado no método de pagamento da classe Reserva.
+* **Strategy**: Usado no método de pagamento (efetuar_pagamento). A classe Reserva (Contexto) delega o algoritmo de cálculo do pagamento para uma estratégia (IPaymentStrategy), permitindo que o usuário escolha dinamicamente entre PagamentoAVistaStrategy, PagamentoCartaoStrategy, etc.
 
-* **Command**: Foi aplicado no menu principal e no tratamento das ações do usuário em main.py.
+* **Command**: Centraliza todas as ações do usuário (ex: CadastrarClienteCommand, ReservarVeiculoCommand) em objetos. O main.py (Invoker) apenas seleciona e executa o comando apropriado, sem conhecer a lógica interna de cada ação.
 
-* **Iterator**: Foi aplicado na classe GerenciarVeiculo para fornecer uma forma de acessar a coleção de veículos (filtrando por padrão apenas os disponíveis) sem expor a estrutura de lista interna.
+* **Iterator**: Aplicado na classe GerenciarVeiculo. Permite percorrer a coleção de veículos de forma controlada (ex: filtrando por padrão apenas os disponíveis) sem expor a lista interna.
 
 ---
 
@@ -255,6 +155,7 @@ Para rodar o sistema, execute o arquivo principal no seu terminal:
 python main.py
 
 ```
+
 
 
 
