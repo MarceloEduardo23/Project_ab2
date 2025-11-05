@@ -33,6 +33,44 @@ O sistema oferece funcionalidades completas como cadastro de clientes e veículo
 Para garantir um código flexível, manutenível e escalável, o sistema foi construído utilizando diversos Padrões de Projeto (Design Patterns). O projeto já contava com uma base sólida utilizando padrões como Singleton, Factory, Builder e Prototype. As seguintes modificações foram realizadas para aprimorar ainda mais a arquitetura:
 
 * **Adapter**: Foi aplicado no sistema de rastreamento GPS.
+   ``` bash
+   # Em Project_ab2/veiculos.py
+   
+   # O Serviço Externo (Adaptee) com uma interface incompatível
+   class ExternalGpsService:
+       def fetch_coords(self, placa_veiculo: str) -> dict:
+           print("-> [API Externa] Buscando coordenadas...")
+           # ... lógica para buscar ou criar coordenadas ...
+           return self._locations[placa]
+   
+   # O Adapter que traduz a interface
+   class GpsAdapter:
+       def __init__(self, gps_service: ExternalGpsService, placa: str):
+           self._adaptee = gps_service
+           self._placa = placa
+    
+       @property 
+       def localizacao(self) -> str:
+           print("-> [Adapter] Chamando API externa e formatando o resultado...")
+           # Chama o método do adaptee
+           coords = self._adaptee.fetch_coords(self._placa)
+           # Formata a saída para a string esperada pelo cliente
+           return f"Lat: {coords['lat']:.6f}, Lon: {coords['lon']:.6f} (Via API Externa)"
+   
+   # O Cliente (Veiculo) usa o Adapter sem saber da complexidade
+   class Veiculo:
+       def __init__(self, modelo='', placa='', ano='', valor=0.0):
+           # ...
+           gps_service = ExternalGpsService()
+           # O Veiculo é instanciado com o GpsAdapter
+           self._gps_tracker = GpsAdapter(gps_service, self.placa)
+   
+       @property
+       def localizacao(self):
+           # O Veiculo apenas chama .localizacao,
+           # que é a interface simplificada pelo Adapter
+           return self._gps_tracker.localizacao
+      ```
 
 * **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
 
@@ -92,3 +130,4 @@ Para rodar o sistema, execute o arquivo principal no seu terminal:
 python main.py
 
 ```
+
