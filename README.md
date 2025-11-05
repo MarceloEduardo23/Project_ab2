@@ -36,7 +36,6 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
    ``` bash
    # Em Project_ab2/veiculos.py
    
-   # O Serviço Externo (Adaptee) com uma interface incompatível
    class ExternalGpsService:
        def fetch_coords(self, placa_veiculo: str) -> dict:
            print("-> [API Externa] Buscando coordenadas...")
@@ -52,9 +51,7 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
        @property 
        def localizacao(self) -> str:
            print("-> [Adapter] Chamando API externa e formatando o resultado...")
-           # Chama o método do adaptee
            coords = self._adaptee.fetch_coords(self._placa)
-           # Formata a saída para a string esperada pelo cliente
            return f"Lat: {coords['lat']:.6f}, Lon: {coords['lon']:.6f} (Via API Externa)"
    
    # O Cliente (Veiculo) usa o Adapter sem saber da complexidade
@@ -67,14 +64,92 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
    
        @property
        def localizacao(self):
-           # O Veiculo apenas chama .localizacao,
-           # que é a interface simplificada pelo Adapter
            return self._gps_tracker.localizacao
       ```
 
 * **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
+``` bash
+   # Em Project_ab2/reserva.py
+   
+   # Interface Implementadora (Implementor)
+   class INotificationSender(ABC):
+       @abstractclassmethod
+       def send(self, message: str):
+           pass
+   
+   # Implementadores Concretos (Canais de envio)
+   class ConsoleSender(INotificationSender):
+       def send(self, message: str):
+           print("\n--- [NOTIFICAÇÃO VIA CONSOLE] ---")
+           print(message)
+   
+   class SmsSender(INotificationSender):
+   =    def send(self, message: str):
+           print(f"\n--- [SMS PARA +5511999998888]: {message} ---\n")
+   
+   # Abstração (Gerenciador de Notificação)
+   class Notification:
+       def __init__(self, sender: INotificationSender):
+           self._sender = sender
+       def send_message(self, message: str):
+           self._sender.send(message)
+   
+   # Abstração Refinada (Tipos de Notificação)
+   class ConfirmationNotification(Notification):
+       def __init__(self, sender: INotificationSender, reserva):
+           super().__init__(sender) # Recebe o implementador (sender)
+           self._reserva = reserva
+       def notify(self):
+           message = (f"Olá! Sua reserva para o veículo {self._reserva.modelo} "
+                      f"foi confirmada com sucesso.")
+           self.send_message(message) # Usa o implementador
+```
 
 * **Composite**: Foi aplicado no menu de relatórios gerenciais, permitindo que sub-menus (Composite) e relatórios finais (Leaf) sejam tratados da mesma forma.
+``` bash
+   # Em Project_ab2/comandos.py
+   
+   # Componente (Interface Comum)
+   class IRelatorioComponent(ABC):
+       @abstractmethod
+       def execute(self):
+           pass
+       @abstractmethod
+       def get_titulo(self) -> str:
+           pass    
+   
+   # Folha (Leaf) - O objeto final que executa uma ação
+   class RelatorioLeaf(IRelatorioComponent, ICommand):
+       def __init__(self, titulo: str, receiver_func):
+           self._titulo = titulo
+           self._receiver_func = receiver_func
+   
+       def execute(self):
+           self._receiver_func()
+   
+       def get_titulo(self) -> str:
+           return self._titulo
+       
+   # Composto (Composite) - O "container" que agrupa outros componentes
+   class RelatorioComposite(IRelatorioComponent):
+       def __init__(self, titulo: str):
+           self._titulo = titulo
+           self._filhos = [] # Pode conter Leafs ou outros Composites
+   
+       def add(self, componente: IRelatorioComponent):
+           self._filhos.append(componente)
+   
+       def get_titulo(self) -> str:
+           return self._titulo
+   
+       def execute(self):
+           # Mostra um submenu com os filhos e permite escolher
+           while True:
+               print(f"\n--- Menu de Relatórios: {self._titulo} ---")
+               for i, rel in enumerate(self._filhos, 1):
+                   print(f"{i} - {rel.get_titulo()}")
+               # ... (lógica do menu) ...
+```
 
 ---
 
@@ -130,4 +205,5 @@ Para rodar o sistema, execute o arquivo principal no seu terminal:
 python main.py
 
 ```
+
 
