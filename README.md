@@ -33,7 +33,7 @@ O sistema oferece funcionalidades completas como cadastro de clientes e veículo
 Para garantir um código flexível, manutenível e escalável, o sistema foi construído utilizando diversos Padrões de Projeto (Design Patterns). O projeto já contava com uma base sólida utilizando padrões como Singleton, Factory, Builder e Prototype. As seguintes modificações foram realizadas para aprimorar ainda mais a arquitetura:
 
 * **Adapter**: Foi aplicado no sistema de rastreamento GPS.
-   ``` bash
+``` bash
    # Em Project_ab2/veiculos.py
    
    class ExternalGpsService:
@@ -65,7 +65,7 @@ Para garantir um código flexível, manutenível e escalável, o sistema foi con
        @property
        def localizacao(self):
            return self._gps_tracker.localizacao
-      ```
+```
 
 * **Bridge**: Foi aplicado no sistema de notificações para clientes (confirmação de reserva, pagamento, etc.).
 ``` bash
@@ -170,9 +170,59 @@ Isso separa a lógica de identificação do erro (na camada de modelo/dados) da 
 
 Criação de Exceções Customizadas: Foi criado um arquivo exceptions.py que define erros de negócio específicos, como CpfJaCadastradoError, ReservaJaPagaError, VeiculoIndisponivelError, etc., todos herdando de uma classe base AppError.
 
+``` bash
+   # Em exceptions.py (arquivo novo)
+   class AppError(Exception):
+       """Classe base para todas as exceções personalizadas da aplicação."""
+       pass
+   
+   class CpfJaCadastradoError(AppError):
+       """Lançada ao tentar cadastrar um CPF que já existe."""
+       pass
+   
+   class ReservaJaPagaError(AppError):
+       """Lançada ao tentar modificar ou cancelar uma reserva que já foi paga."""
+       pass
+   
+   # ... (e outras exceções)
+```
+
 Lançamento (Raise): As classes de lógica (ex: GerenciarCliente em clientes.py, Reserva em reserva.py) agora lançam (raise) essas exceções específicas quando uma regra de negócio é violada (ex: raise CpfJaCadastradoError(...)).
 
+``` bash
+   # Em Project_ab2/clientes.py
+   # (necessário: from exceptions import CpfJaCadastradoError)
+   class GerenciarCliente(Singleton):
+       def cadastrar_cliente(self):
+           # ... (lógica para pegar nome e cpf) ...
+   
+           if cpf in [c.cpf for c in self.clientes]:
+               # Lança a exceção específica em vez de só imprimir
+               raise CpfJaCadastradoError("CPF já cadastrado! Por favor, utilize outro CPF.")
+           else:
+               novo_cliente = ClienteFactory().criar_usuario(nome, cpf)
+               self.clientes.append(novo_cliente)
+               print("\nCliente cadastrado com sucesso! \n")
+```
+
 Captura (Try...Except): As classes "controladoras" (ex: CadastrarClienteCommand em comandos.py e a função login em main.py) são responsáveis por capturar (try...except) essas exceções específicas e apresentar uma mensagem amigável ao usuário, sem que o programa quebre.
+
+```bash
+   # Em Project_ab2/main.py
+   # (necessário: from exceptions import CpfJaCadastradoError)
+   def login():
+       while True:
+           # ... (menu de login) ...
+           if escolha == '2':
+               try:
+                   # Tenta executar a ação que pode falhar
+                   ger_cli.cadastrar_cliente()
+                   input("Pressione Enter para fazer o login...")
+               except CpfJaCadastradoError as e:
+                   # Captura o erro específico e trata
+                   print(f"\n[ERRO NO CADASTRO]: {e}")
+                   input("Pressione Enter para tentar novamente...")
+```
 
 ---
 
@@ -205,5 +255,6 @@ Para rodar o sistema, execute o arquivo principal no seu terminal:
 python main.py
 
 ```
+
 
 
